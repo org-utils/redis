@@ -1,6 +1,6 @@
 {
   "name": "@dev_config/redis",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Production-grade Redis infrastructure for distributed systems",
   "type": "module",
   "main": "./dist/index.js",
