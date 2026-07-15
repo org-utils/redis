@@ -171,6 +171,10 @@ export class RedisClientWrapper {
     );
   }
 
+  // Or expose the methods needed by fastify-rate-limit
+  defineCommand(...args: Parameters<RedisClient['defineCommand']>) {
+    return this.client.defineCommand(...args);
+  }
   async setnx(key: string, value: string | Buffer, ttl?: number): Promise<number> {
     return this.exec('SETNX', [key, value], () =>
       this.client.setnx(key, value).then(result => {
