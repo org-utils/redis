@@ -3,14 +3,14 @@ import { z } from 'zod';
 // ============ Configuration Schema ============
 export const RedisConfigSchema = z.object({
   // Connection
-  host: z.string().default('localhost'),
-  port: z.number().min(1).max(65535).default(6379),
+  host: z.string().optional().default('localhost'),
+  port: z.number().min(1).max(65535).optional().default(6379),
   password: z.string().optional(),
   username: z.string().optional(),
-  database: z.number().min(0).max(15).default(0),
+  database: z.number().min(0).max(15).optional().default(0),
 
   // Mode: standalone, sentinel, or cluster
-  mode: z.enum(['standalone', 'sentinel', 'cluster']).default('standalone'),
+  mode: z.enum(['standalone', 'sentinel', 'cluster']).optional().default('standalone'),
 
   // For sentinel mode
   sentinelNodes: z.array(z.object({
@@ -26,7 +26,7 @@ export const RedisConfigSchema = z.object({
   })).optional(),
 
   // TLS
-  tls: z.boolean().default(false),
+  tls: z.boolean().optional().default(false),
   tlsOptions: z.object({
     ca: z.string().optional(),
     cert: z.string().optional(),
@@ -35,17 +35,17 @@ export const RedisConfigSchema = z.object({
   }).optional(),
 
   // Performance
-  maxRetries: z.number().min(1).max(10).default(3),
-  retryDelay: z.number().min(100).max(5000).default(1000),
-  connectionTimeout: z.number().min(1000).default(5000),
-  maxConnections: z.number().min(1).max(100).default(10),
+  maxRetries: z.number().min(1).max(10).optional().default(3),
+  retryDelay: z.number().min(100).max(5000).optional().default(1000),
+  connectionTimeout: z.number().min(1000).optional().default(5000),
+  maxConnections: z.number().min(1).max(100).optional().default(10),
 
   // Cache defaults
-  defaultTTL: z.number().min(0).default(3600),
-  compressionThreshold: z.number().min(1).default(1024),
+  defaultTTL: z.number().min(0).optional().default(3600),
+  compressionThreshold: z.number().min(1).optional().default(1024),
 
   // Observability
-  slowCommandThreshold: z.number().min(0).default(1000),
+  slowCommandThreshold: z.number().min(0).optional().default(1000),
 });
 
 export type RedisConfig = z.infer<typeof RedisConfigSchema>;
