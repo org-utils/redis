@@ -67,7 +67,6 @@
   },
   "peerDependencies": {
     "ioredis": "^5.11.1",
-    "typescript": "^5.0.0",
     "zod": "^4.4.3"
   },
   "engines": {
