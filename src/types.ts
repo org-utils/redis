@@ -2,31 +2,100 @@ import {type Redis, RedisOptions} from 'ioredis';
 import { z } from 'zod';
 
 // ============ Configuration Schema ============
-export const RedisConfigSchema = z.object({
-  // Connection
-  host: z.string().default('localhost'),
-  port: z.number().min(1).max(65535).default(6379).optional(),
+// export const RedisConfigSchema = z.object({
+//   // Connection
+//   host: z.string().default('localhost'),
+//   port: z.number().min(1).max(65535).default(6379).optional(),
+//   password: z.string().optional(),
+//   username: z.string().optional(),
+//   database: z.number().min(0).max(15).default(0).optional(),
+//   url: z.url().optional(),
+//   // Mode: standalone, sentinel, or cluster
+//   mode: z.enum(['standalone', 'sentinel', 'cluster']).default('standalone').optional(),
+
+//   // For sentinel mode
+//   sentinelNodes: z.array(z.object({
+//     host: z.string(),
+//     port: z.number().min(1).max(65535),
+//   })).optional(),
+//   sentinelMasterName: z.string().optional(),
+
+//   // For cluster mode
+//   clusterNodes: z.array(z.object({
+//     host: z.string(),
+//     port: z.number().min(1).max(65535),
+//   })).optional(),
+
+//   // TLS
+//   tls: z.boolean().default(false).optional(),
+//   tlsOptions: z.object({
+//     ca: z.string().optional(),
+//     cert: z.string().optional(),
+//     key: z.string().optional(),
+//     rejectUnauthorized: z.boolean().default(true),
+//   }).optional(),
+
+//   // Performance
+//   maxRetries: z.number().min(1).max(10).default(3).optional(),
+//   retryDelay: z.number().min(100).max(5000).default(1000).optional(),
+//   connectionTimeout: z.number().min(1000).default(5000).optional(),
+//   maxConnections: z.number().min(1).max(100).default(10).optional(),
+
+//   // Cache defaults
+//   defaultTTL: z.number().min(0).default(3600).optional(),
+//   compressionThreshold: z.number().min(1).default(1024).optional(),
+
+//   // Observability
+//   slowCommandThreshold: z.number().min(0).default(1000).optional(),
+// }).superRefine((data, ctx) => {
+//   // If mode is standalone, clear unrelated fields
+//   if (data.mode === 'standalone') {
+//     data.sentinelNodes = undefined;
+//     data.sentinelMasterName = undefined;
+//     data.clusterNodes = undefined;
+//     return; // Skip further validation
+//   }
+
+//   // If mode is sentinel, validate sentinel fields are present
+//   if (data.mode === 'sentinel') {
+//     if (!data.sentinelNodes || data.sentinelNodes.length === 0) {
+//       ctx.addIssue({
+//         code: z.ZodIssueCode.custom,
+//         message: 'sentinelNodes is required for sentinel mode',
+//         path: ['sentinelNodes'],
+//       });
+//     }
+//     if (!data.sentinelMasterName) {
+//       ctx.addIssue({
+//         code: z.ZodIssueCode.custom,
+//         message: 'sentinelMasterName is required for sentinel mode',
+//         path: ['sentinelMasterName'],
+//       });
+//     }
+//     // Clear cluster fields
+//     data.clusterNodes = undefined;
+//   }
+
+//   // If mode is cluster, validate cluster fields are present
+//   if (data.mode === 'cluster') {
+//     if (!data.clusterNodes || data.clusterNodes.length === 0) {
+//       ctx.addIssue({
+//         code: z.ZodIssueCode.custom,
+//         message: 'clusterNodes is required for cluster mode',
+//         path: ['clusterNodes'],
+//       });
+//     }
+//     // Clear sentinel fields
+//     data.sentinelNodes = undefined;
+//     data.sentinelMasterName = undefined;
+//   }
+// });
+// Base config that's common to all modes
+const BaseRedisConfig = z.object({
   password: z.string().optional(),
   username: z.string().optional(),
   database: z.number().min(0).max(15).default(0).optional(),
 
-  // Mode: standalone, sentinel, or cluster
-  mode: z.enum(['standalone', 'sentinel', 'cluster']).default('standalone').optional(),
-
-  // For sentinel mode
-  sentinelNodes: z.array(z.object({
-    host: z.string(),
-    port: z.number().min(1).max(65535),
-  })).optional(),
-  sentinelMasterName: z.string().optional(),
-
-  // For cluster mode
-  clusterNodes: z.array(z.object({
-    host: z.string(),
-    port: z.number().min(1).max(65535),
-  })).optional(),
-
-  // TLS
   tls: z.boolean().default(false).optional(),
   tlsOptions: z.object({
     ca: z.string().optional(),
@@ -34,21 +103,70 @@ export const RedisConfigSchema = z.object({
     key: z.string().optional(),
     rejectUnauthorized: z.boolean().default(true),
   }).optional(),
-
-  // Performance
   maxRetries: z.number().min(1).max(10).default(3).optional(),
   retryDelay: z.number().min(100).max(5000).default(1000).optional(),
   connectionTimeout: z.number().min(1000).default(5000).optional(),
   maxConnections: z.number().min(1).max(100).default(10).optional(),
-
-  // Cache defaults
   defaultTTL: z.number().min(0).default(3600).optional(),
   compressionThreshold: z.number().min(1).default(1024).optional(),
-
-  // Observability
   slowCommandThreshold: z.number().min(0).default(1000).optional(),
 });
 
+// Mode-specific configs
+const StandaloneConfig = BaseRedisConfig.extend({
+  mode: z.literal('standalone').default('standalone'),
+  host: z.string().default('localhost').optional(),
+  port: z.number().min(1).max(65535).default(6379).optional(),
+  url: z.url().optional(),
+}).superRefine((data, ctx) => {
+  // Validate that either URL is provided OR (host AND port are provided)
+  const hasUrl = !!data.url;
+  const hasHostAndPort = !!(data.host && data.port);
+
+  if (!hasUrl && !hasHostAndPort) {
+    ctx.addIssue({
+      code: "custom",
+      message: 'Either provide a URL or provide both host and port',
+      path: ['url'], // Add error on url field
+    });
+    ctx.addIssue({
+      code: "custom",
+      message: 'Either provide a URL or provide both host and port',
+      path: ['host'],
+    });
+  }
+
+  // Optional: If both URL and host/port are provided, you can prefer URL
+  // or you can allow both and let the consumer decide
+});
+
+const SentinelConfig = BaseRedisConfig.extend({
+  mode: z.literal('sentinel'),
+  host: z.string().optional(),
+  port: z.number().min(1).max(65535).optional(),
+  sentinelNodes: z.array(z.object({
+    host: z.string(),
+    port: z.number().min(1).max(65535),
+  })),
+  sentinelMasterName: z.string(),
+});
+
+const ClusterConfig = BaseRedisConfig.extend({
+  mode: z.literal('cluster'),
+  host: z.string().optional(),
+  port: z.number().min(1).max(65535).optional(),
+  clusterNodes: z.array(z.object({
+    host: z.string(),
+    port: z.number().min(1).max(65535),
+  })),
+});
+
+// Union of all configs
+export const RedisConfigSchema = z.discriminatedUnion('mode', [
+  StandaloneConfig,
+  SentinelConfig,
+  ClusterConfig,
+]);
 export type RedisConfig = RedisOptions & z.infer<typeof RedisConfigSchema> ;
 
 // ============ Cache Types ============
@@ -168,3 +286,58 @@ export type CacheEventMap = {
   refresh: { key: string };
   error: { key: string; error: Error };
 };
+
+
+
+/*
+
+
+// ✅ Standalone config (valid)
+const standaloneConfig = {
+  mode: 'standalone',
+  host: 'localhost',
+  port: 6379,
+  password: 'myPassword',
+  maxRetries: 5,
+};
+
+const parsedStandalone = RedisConfigSchema.parse(standaloneConfig);
+console.log(parsedStandalone);
+// {
+//   mode: 'standalone',
+//   host: 'localhost',
+//   port: 6379,
+//   password: 'myPassword',
+//   maxRetries: 5,
+//   // sentinelNodes and clusterNodes don't exist here
+// }
+
+// ✅ Sentinel config (valid)
+const sentinelConfig = {
+  mode: 'sentinel',
+  sentinelNodes: [
+    { host: 'sentinel1', port: 26379 },
+    { host: 'sentinel2', port: 26380 },
+    { host: 'sentinel3', port: 26381 },
+  ],
+  sentinelMasterName: 'mymaster',
+  password: 'myPassword',
+  maxRetries: 5,
+};
+
+const parsedSentinel = RedisConfigSchema.parse(sentinelConfig);
+
+// ✅ Cluster config (valid)
+const clusterConfig = {
+  mode: 'cluster',
+  clusterNodes: [
+    { host: 'redis1', port: 7000 },
+    { host: 'redis2', port: 7001 },
+    { host: 'redis3', port: 7002 },
+  ],
+  password: 'myPassword',
+  maxRetries: 5,
+};
+
+const parsedCluster = RedisConfigSchema.parse(clusterConfig);
+*/

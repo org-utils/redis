@@ -1,4 +1,4 @@
-import Redis, { Cluster, Redis as RedisClient } from 'ioredis';
+import Redis, { Cluster, Redis as RedisClient, RedisOptions } from 'ioredis';
 import { RedisConfig } from './types.js';
 import { Logger } from '@dev_config/logger';
 
@@ -28,6 +28,7 @@ export class RedisClientWrapper {
       enableReadyCheck: true,
       enableOfflineQueue: true,
       lazyConnect: false,
+
     };
 
     switch (this.config.mode) {
@@ -57,6 +58,12 @@ export class RedisClientWrapper {
         });
 
       default:
+        if (this.config.url) {
+          return new RedisClient(this.config.url, {
+            ...baseOptions,
+            ...this.buildRedisOptions()
+          });
+        }
         return new RedisClient({
           ...baseOptions,
           host: this.config.host,
