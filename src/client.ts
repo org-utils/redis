@@ -20,7 +20,7 @@ export class RedisClientWrapper {
   private createClient(): RedisClient | Cluster {
     const baseOptions = {
       retryStrategy: (times: number) => {
-        if (this.config?.maxRetries && times > this.config?.maxRetries) return null;
+        if (this.config?.maxRetries != null && times > this.config?.maxRetries) return null;
         return Math.min(times * (this.config?.retryDelay ?? 1000), 5000);
       },
       connectTimeout: this.config.connectionTimeout,
@@ -138,7 +138,7 @@ export class RedisClientWrapper {
       const result = await operation();
       const duration = Date.now() - start;
 
-      if (duration > this.config.slowCommandThreshold) {
+      if (this.config?.slowCommandThreshold != null && duration > this.config?.slowCommandThreshold) {
         this.logger.warn(`Slow command: ${command} took ${duration}ms`, {
           command,
           args: args.slice(0, 5),
