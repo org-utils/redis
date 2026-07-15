@@ -1,3 +1,4 @@
+import {type Redis, RedisOptions} from 'ioredis';
 import { z } from 'zod';
 
 // ============ Configuration Schema ============
@@ -48,7 +49,7 @@ export const RedisConfigSchema = z.object({
   slowCommandThreshold: z.number().min(0).default(1000).optional(),
 });
 
-export type RedisConfig = z.infer<typeof RedisConfigSchema>;
+export type RedisConfig = RedisOptions & z.infer<typeof RedisConfigSchema> ;
 
 // ============ Cache Types ============
 export interface CacheOptions {
