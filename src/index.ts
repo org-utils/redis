@@ -7,7 +7,7 @@ export { HealthChecker } from './health.js';
 
 // Re-export logger types for convenience
 
-export { createLogger } from '@dev_config/logger';
+import { createLogger } from '@dev_config/logger';
 
 export type { Logger, LoggerOptions } from '@dev_config/logger';
 
@@ -50,3 +50,4 @@ export default {
   HealthChecker,
   createLogger,
 };
+export { createLogger };
