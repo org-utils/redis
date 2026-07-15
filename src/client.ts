@@ -20,8 +20,8 @@ export class RedisClientWrapper {
   private createClient(): RedisClient | Cluster {
     const baseOptions = {
       retryStrategy: (times: number) => {
-        if (times > this.config.maxRetries) return null;
-        return Math.min(times * this.config.retryDelay, 5000);
+        if (this.config?.maxRetries && times > this.config?.maxRetries) return null;
+        return Math.min(times * (this.config?.retryDelay ?? 1000), 5000);
       },
       connectTimeout: this.config.connectionTimeout,
       maxRetriesPerRequest: this.config.maxRetries,
